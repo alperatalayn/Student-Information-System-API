@@ -6,7 +6,7 @@ class Course(models.Model):
     name = models.CharField(default ="",null = False,blank=False,max_length=50)
     credit = models.IntegerField(null = False,blank=False)
     is_essential = models.BooleanField(default=True)
-    students = models.ManyToManyField(CustomUser, related_name='courselist',blank=True)
+    students = models.ManyToManyField(CustomUser ,related_name='courselist',blank=True)
 
 class Class(models.Model):
     name = models.CharField(default ="",null = False,blank=False,max_length=50)

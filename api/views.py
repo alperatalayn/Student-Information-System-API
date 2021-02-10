@@ -17,7 +17,7 @@ from django.http import FileResponse
 def classList(request):
     try:
         classes = Class.objects.all()
-        serializer = ClassSerializer(classes, many=True)
+        serializer = ClassSerializer(classes,many=True)
         return Response(serializer.data)
     except:
         raise Exception("An error occured")
@@ -31,13 +31,33 @@ def courseList(request):
         return Response(serializer.data)
     except:
         raise Exception("An error occured")
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def userInfo(request):
+    try:
+        id = request.user.id
+        is_student = request.user.is_student
+        is_instructor = request.user.is_instructor
+        return Response({"id":id,"is_student":is_student,"is_instructor":is_instructor})
+    except:
+        raise Exception("An error occured")
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated,IsInstructor])
 def studentList(request):
     try:
-        classes = CustomUser.objects.filter(is_student=True)
-        serializer = CustomUserSerializer(classes, many=True)
+        students = CustomUser.objects.filter(is_student=True)
+        serializer = CustomUserSerializer(students, many=True)
+        return Response(serializer.data)
+    except:
+        raise Exception("An error occured")
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated,IsStudent])
+def studentSingle(request,pk):
+    try:
+        student = CustomUser.objects.get(id=pk)
+        serializer = CustomUserSerializer(student, many=False)
         return Response(serializer.data)
     except:
         raise Exception("An error occured")
@@ -52,7 +72,13 @@ def createClass(request):
             serializer.create(validated_data=serializer.data)
         else:
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data=serializer.errors)        
-        return Response(serializer.data)
+        try:
+            classes = Class.objects.all()
+            serializer = ClassSerializer(classes,many=True)
+            return Response(serializer.data)
+        except:
+            raise Exception("An error occured")
+
     except:
         raise Exception("An error occured")
 
@@ -63,14 +89,13 @@ def chooseCourses(request,pk):
     try:
         student = CustomUser.objects.get(id=pk)
         counter = 0
-        id_list = request.data.pop("list")
+        id_list = request.data
         courses = Course.objects.filter(pk__in = id_list)
         for course in courses:
             counter+=course.credit
         #student can get courses between 10 to 20 credits total
-        if counter > 10 and counter <= 20:
-            for course in courses:
-                student.courses.add(course)
+        if counter >= 10 and counter <= 20:
+            student.courselist.set(courses)
             serializer = CourseSerializer(student.courses,many=True)
             if serializer.is_valid:
                 return Response(serializer.data)
@@ -87,15 +112,15 @@ def chooseCourses(request,pk):
 def addStudentToClass(request,pk):
     try:
         classToAdd  = Class.objects.get(id = pk)
-        id_list = request.data.pop("list")
-        students = CustomUser.objects.filter(pk__in = id_list)
-        for student in students:
-            classToAdd.students.add(student.id)
-        serializer = ClassSerializer(classToAdd,many=False)
-        if serializer.is_valid:
+        id_list = request.data
+        for id in id_list:
+            classToAdd.students.add(id)
+        try:
+            classes = Class.objects.all()
+            serializer = ClassSerializer(classes,many=True)
             return Response(serializer.data)
-        else:   
-            return Response(status = status.HTTP_400_BAD_REQUEST, data="cant add student")
+        except:
+            raise Exception("An error occured")
     except:
         raise Exception("An error occured")
 @api_view(['POST'])
